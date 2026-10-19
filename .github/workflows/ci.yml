@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-15, macos-15-intel]
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_TEST_THREADS: 2
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy,rustfmt
+      - name: Check formatting
+        if: runner.os == 'Linux'
+        run: cargo +stable fmt --all -- --check
+      - name: Lint all targets
+        run: cargo +stable clippy --locked --all-targets --all-features -- -D warnings
+      - name: Test debug, release, and embedded builds
+        shell: bash
+        run: |
+          # Let tests lock as much memory as the runner already permits.
+          # Key memory must stay locked in every build configuration.
+          if [[ "$RUNNER_OS" != "Windows" ]]; then
+            ulimit -S -l "$(ulimit -H -l)"
+          fi
+          cargo +stable test --locked --all-targets --all-features
+          cargo +stable test --locked --release --all-targets --all-features
+          cargo +stable test --locked --no-default-features
+          cargo +stable test --locked --doc --all-features
+      - name: Lint embedded library without CLI dependencies
+        run: cargo +stable clippy --locked --no-default-features --all-targets -- -D warnings
+      - name: Build public API documentation
+        if: runner.os == 'Linux'
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo +stable doc --locked --no-deps --all-features
+      - name: Verify source package
+        if: runner.os == 'Linux'
+        run: cargo +stable package --locked
+
+  msrv:
+    name: Minimum Rust version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust 1.85
+        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Check all targets
+        run: cargo +1.85.0 check --locked --all-targets --all-features
+      - name: Check embedded library
+        run: cargo +1.85.0 check --locked --no-default-features --lib
+
+  cross-check:
+    name: Embedded and 32-bit targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install cross-compilation targets
+        run: >-
+          rustup toolchain install stable --profile minimal
+          --target aarch64-linux-android,aarch64-apple-ios,i686-unknown-linux-musl
+      - name: Check library portability
+        run: |
+          cargo +stable check --locked --no-default-features --lib --target aarch64-linux-android
+          cargo +stable check --locked --no-default-features --lib --target aarch64-apple-ios
+          cargo +stable check --locked --no-default-features --lib --target i686-unknown-linux-musl

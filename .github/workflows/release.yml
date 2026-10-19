@@ -1,0 +1,173 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-version:
+    name: Check release version
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require a tag matching Cargo.toml
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+
+          metadata = json.loads(subprocess.check_output([
+              "cargo", "metadata", "--locked", "--no-deps", "--format-version", "1"
+          ]))
+          version = next(package["version"] for package in metadata["packages"]
+                         if package["name"] == "lunacrypt")
+          tag = os.environ["RELEASE_TAG"]
+          if not re.fullmatch(r"v\d+\.\d+\.\d+", tag) or tag != f"v{version}":
+              raise SystemExit(f"Tag {tag!r} must match Cargo.toml version v{version}")
+          PY
+
+  check:
+    name: Required checks
+    needs: check-version
+    uses: ./.github/workflows/ci.yml
+
+  audit:
+    name: Dependency audit
+    needs: check-version
+    uses: ./.github/workflows/security.yml
+
+  build:
+    name: Package (${{ matrix.target }})
+    needs: [check, audit]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+          - os: macos-15
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+    env:
+      CARGO_TERM_COLOR: always
+      RELEASE_TARGET: ${{ matrix.target }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --target "$RELEASE_TARGET"
+      - name: Fetch locked dependencies and license files
+        run: cargo +stable fetch --locked --target "$RELEASE_TARGET"
+      - name: Build executable
+        run: cargo +stable build --locked --release --bin lunacrypt --target "$RELEASE_TARGET"
+      - name: Check executable starts
+        run: |
+          executable="target/$RELEASE_TARGET/release/lunacrypt"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            executable+=".exe"
+          fi
+          "$executable" --version
+      - name: Package executable, documentation, and licenses
+        run: |
+          python=python3
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            python=python
+          fi
+          "$python" scripts/package_release.py --target "$RELEASE_TARGET" --output dist
+      - name: Save release files
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish:
+    name: Publish complete release
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download release files
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Verify executable archives
+        working-directory: dist
+        run: |
+          test "$(find . -maxdepth 1 -name '*.sha256' | wc -l)" -eq 4
+          sha256sum --check ./*.sha256
+      - name: Install Rust for source packaging
+        run: rustup toolchain install stable --profile minimal
+      - name: Add matching source archive with dependencies
+        run: |
+          archive="lunacrypt-$RELEASE_TAG-source.tar.gz"
+          staging=$(mktemp -d)
+          trap 'rm -rf "$staging"' EXIT
+          source_dir="$staging/lunacrypt-$RELEASE_TAG"
+          mkdir -p "$source_dir"
+          git archive --format=tar --output="$staging/source.tar" HEAD
+          tar -xf "$staging/source.tar" -C "$source_dir"
+          (
+            cd "$source_dir"
+            if [[ -e .cargo/config || -e .cargo/config.toml ]]; then
+              echo "Source packaging must preserve the existing Cargo configuration."
+              exit 1
+            fi
+            mkdir -p .cargo
+            cargo +stable vendor --locked --versioned-dirs vendor > .cargo/config.toml
+            cargo +stable metadata --locked --offline --format-version 1 > /dev/null
+          )
+          tar -czf "dist/$archive" -C "$staging" "lunacrypt-$RELEASE_TAG"
+          (cd dist && sha256sum "$archive" > "$archive.sha256")
+      - name: Publish release with all downloads
+        run: |
+          if draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft'); then
+            if [[ "$draft" != "true" ]]; then
+              echo "Release $RELEASE_TAG is already published; refusing to replace its files."
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_TAG" --draft --verify-tag \
+              --title "LunaCrypt $RELEASE_TAG" --notes-file RELEASE_NOTES.md
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest

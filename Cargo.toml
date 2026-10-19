@@ -1,0 +1,62 @@
+[package]
+name = "lunacrypt"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Portable authenticated encrypted file vault"
+license = "GPL-3.0-only"
+readme = "README.md"
+repository = "https://github.com/Andell4301/lunacrypt"
+keywords = ["encryption", "vault", "cli", "storage"]
+categories = ["cryptography", "command-line-utilities", "filesystem"]
+include = [
+    "/src/**", "/tests/**", "/examples/**",
+    "/Cargo.toml", "/Cargo.lock", "/README.md", "/LICENSE-*",
+    "/SECURITY.md", "/ARCHITECTURE.md", "/CONTRIBUTING.md",
+]
+
+[profile.release]
+overflow-checks = true
+
+[features]
+default = ["cli"]
+cli = ["dep:byte-unit", "dep:clap", "dep:rpassword"]
+
+[[bin]]
+name = "lunacrypt"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[dependencies]
+aes-gcm-siv = { version = "0.12.1", default-features = false, features = ["aes", "alloc", "zeroize"] }
+# Enable wiping in AES and POLYVAL too. aes-gcm-siv's feature doesn't enable theirs.
+aes = { version = "0.9", features = ["zeroize"] }
+polyval = { version = "0.7", features = ["zeroize"] }
+argon2 = { version = "0.5.3", features = ["zeroize"] }
+byte-unit = { version = "5.2.6", default-features = false, features = ["byte", "std"], optional = true }
+cap-fs-ext = "=4.0.2"
+cap-std = "4.0.2"
+chacha20poly1305 = "0.10.1"
+clap = { version = "4", features = ["derive"], optional = true }
+fs2 = "0.4.3"
+getrandom = "0.4.2"
+hkdf = "0.13.0"
+hmac = { version = "0.13.0", features = ["zeroize"] }
+memmap2 = "0.9.11"
+region = "4.0.1"
+rpassword = { version = "7", optional = true }
+rustix = { version = "1.1.4", features = ["fs"] }
+secrecy = "0.10.3"
+sha2 = { version = "0.11.0", features = ["zeroize"] }
+thiserror = "2.0.18"
+zeroize = "1.8.2"
+unicode-normalization = "=0.1.24"
+focaccia = "=2.0.0"
+
+[target.'cfg(windows)'.dependencies]
+winx = "0.36.4"
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+# Tests that lower the limit on locked memory run in a separate process,
+# so other tests aren't affected.
+rustix = { version = "1.1.4", features = ["process"] }

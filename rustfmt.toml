@@ -1,0 +1,5 @@
+# Nightly-only rustfmt options: run `cargo +nightly fmt --all`.
+# Stable rustfmt warns and ignores these.
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+reorder_impl_items = true
