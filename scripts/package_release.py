@@ -135,7 +135,8 @@ def main():
     archive_path = destination / filename
     archive_path.write_bytes(content)
     checksum_path = destination / f"{filename}.sha256"
-    checksum_path.write_text(f"{hashlib.sha256(content).hexdigest()}  {filename}\n", encoding="utf-8")
+    # Write bytes so Windows keeps the newline expected by Unix checksum tools.
+    checksum_path.write_bytes(f"{hashlib.sha256(content).hexdigest()}  {filename}\n".encode("ascii"))
     print(archive_path)
     print(checksum_path)
 
