@@ -28,7 +28,7 @@ glibc 2.35 or newer. See the release notes for the build and test environments.
 Extract the archive and run `./lunacrypt --help`, or `.\lunacrypt.exe --help`
 in Windows PowerShell. You can move the executable to a directory on your `PATH`.
 
-To build from source, you'll need Rust 1.85 or newer:
+To build from source, you'll need Rust 1.87 or newer:
 
 ```sh
 git clone https://github.com/Andell4301/lunacrypt.git

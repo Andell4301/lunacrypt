@@ -7,7 +7,7 @@ Report vulnerabilities through the private process in the security policy.
 
 ## Development
 
-Use Rust 1.85 or newer. From a checkout:
+Use Rust 1.87 or newer. From a checkout:
 
 ```sh
 cargo fmt --all -- --check
@@ -37,7 +37,7 @@ to make a test pass. Tests that change process resource limits must run in a
 separate child process.
 
 The [CI workflow](https://github.com/Andell4301/lunacrypt/blob/HEAD/.github/workflows/ci.yml) has the commands for release tests,
-Rust 1.85, documentation, source packaging, and Android, iOS, and 32-bit builds.
+Rust 1.87, documentation, source packaging, and Android, iOS, and 32-bit builds.
 Use the checks that fit the change. Building for another platform doesn't prove
 that its file locking, memory protection, or recovery works: those need tests on
 that platform. For dependency changes, also run `cargo audit --deny warnings`

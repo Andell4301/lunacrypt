@@ -70,12 +70,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install Rust 1.85
-        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Install Rust 1.87
+        run: rustup toolchain install 1.87.0 --profile minimal
       - name: Check all targets
-        run: cargo +1.85.0 check --locked --all-targets --all-features
+        run: cargo +1.87.0 check --locked --all-targets --all-features
       - name: Check embedded library
-        run: cargo +1.85.0 check --locked --no-default-features --lib
+        run: cargo +1.87.0 check --locked --no-default-features --lib
 
   cross-check:
     name: Embedded and 32-bit targets

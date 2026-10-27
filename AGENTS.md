@@ -24,7 +24,7 @@ also read [SECURITY.md](SECURITY.md) and the relevant parts of
   Mention past behavior only when it explains a current constraint or design
   decision.
 - Add dependencies only for a concrete need. Check platform support, required
-  features, and Rust 1.85 compatibility. Keep `Cargo.lock` committed. Changes to
+  features, and Rust 1.87 compatibility. Keep `Cargo.lock` committed. Changes to
   Unicode normalization or case-folding pins need a filename-format review.
 - Keep README examples, API docs, and security claims accurate. Passing tests
   and source review are not an independent security audit.

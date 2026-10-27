@@ -1,13 +1,29 @@
-# LunaCrypt 0.1.0
+# LunaCrypt 0.1.1
 
-LunaCrypt stores files and folders in an encrypted vault. It includes a command
-line interface and a Rust library for applications that provide their own UI.
+This release updates dependencies to address a timing side-channel vulnerability
+in `ctutils` and raises the minimum supported Rust version to 1.87.
 
-- XChaCha20-Poly1305 or AES-256-GCM-SIV encryption for headers, catalogs, and files.
-- Argon2id password derivation and protected key memory.
-- File and directory import, extraction, verification, and password changes.
-- Two header copies and two catalog copies for recovery from interrupted writes.
-- Positioned file reads and seekable readers for previews.
+## Security update
+
+The locked dependencies now use `ctutils` 0.4.6 instead of 0.4.2, addressing
+[RUSTSEC-2026-0385](https://rustsec.org/advisories/RUSTSEC-2026-0385.html).
+Affected versions can generate branches that depend on secret values in mask
+generation and certain 128-bit comparisons, potentially leaking secrets through
+timing side channels. The advisory lists 0.4.4 and newer as patched.
+
+Other dependencies have also been updated in `Cargo.lock`.
+
+## Compatibility and upgrading
+
+- Building from source now requires Rust 1.87 or newer, up from 1.85, to support
+  the updated dependency. Downloaded executables do not require Rust.
+- The public API, CLI commands, and vault format are unchanged. Existing vaults
+  remain compatible; no migration is required.
+- CLI users should replace their executable with the 0.1.1 download. Source
+  builds should use `--locked` to select this release's dependency versions.
+- Library users must also update their application's `Cargo.lock`: run
+  `cargo update -p ctutils` and confirm it selects 0.4.4 or newer. LunaCrypt's
+  lockfile does not control dependency versions in consuming applications.
 
 ## Downloads
 
