@@ -32,7 +32,7 @@ aes-gcm-siv = { version = "0.12.1", default-features = false, features = ["aes",
 # Enable wiping in AES and POLYVAL too. aes-gcm-siv's feature doesn't enable theirs.
 aes = { version = "0.9", features = ["zeroize"] }
 polyval = { version = "0.7", features = ["zeroize"] }
-argon2 = { version = "0.5.3", features = ["zeroize"] }
+argon2 = { version = "0.6.0", features = ["zeroize"] }
 byte-unit = { version = "5.2.6", default-features = false, features = ["byte", "std"], optional = true }
 cap-fs-ext = "=4.0.2"
 cap-std = "4.0.2"
