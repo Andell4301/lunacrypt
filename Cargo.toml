@@ -50,7 +50,7 @@ secrecy = "0.10.3"
 sha2 = { version = "0.11.0", features = ["zeroize"] }
 thiserror = "2.0.18"
 zeroize = "1.8.2"
-unicode-normalization = "=0.1.24"
+unicode-normalization = "=0.1.26"
 focaccia = "=2.0.0"
 
 [target.'cfg(windows)'.dependencies]
