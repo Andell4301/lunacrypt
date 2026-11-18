@@ -1,29 +1,35 @@
-# LunaCrypt 0.1.1
+# LunaCrypt 0.1.2
 
-This release updates dependencies to address a timing side-channel vulnerability
-in `ctutils` and raises the minimum supported Rust version to 1.87.
+This release updates direct dependency requirements and the locked dependencies
+used for source builds and release executables.
 
 ## Security update
 
-The locked dependencies now use `ctutils` 0.4.6 instead of 0.4.2, addressing
-[RUSTSEC-2026-0385](https://rustsec.org/advisories/RUSTSEC-2026-0385.html).
-Affected versions can generate branches that depend on secret values in mask
-generation and certain 128-bit comparisons, potentially leaking secrets through
-timing side channels. The advisory lists 0.4.4 and newer as patched.
+The locked dependencies now use `rustix` 1.1.6 instead of 1.1.5, addressing
+[RUSTSEC-2026-0486](https://rustsec.org/advisories/RUSTSEC-2026-0486.html).
+Affected extended-attribute functions can mark unwritten memory as initialized
+when called with a zero-length buffer. The advisory lists 1.1.6 and newer as
+patched. The minimum `rustix` requirement is also raised to 1.1.6.
 
-Other dependencies have also been updated in `Cargo.lock`.
+## Dependency updates
+
+- Raise dependency requirements for `cap-std`, `getrandom`, `memmap2`, `rustix`,
+  `thiserror`, and `zeroize` to their updated patch versions.
+- Refresh `Cargo.lock`, including `ctutils` 0.4.8, `zeroize` 1.9.2,
+  `rustix` 1.1.6, and updates to CLI and transitive dependencies.
+- Keep the Unicode normalization and case-folding dependency pins unchanged.
 
 ## Compatibility and upgrading
 
-- Building from source now requires Rust 1.87 or newer, up from 1.85, to support
-  the updated dependency. Downloaded executables do not require Rust.
+- Building from source still requires Rust 1.87 or newer. Downloaded executables
+  do not require Rust.
 - The public API, CLI commands, and vault format are unchanged. Existing vaults
   remain compatible; no migration is required.
-- CLI users should replace their executable with the 0.1.1 download. Source
+- CLI users should replace their executable with the 0.1.2 download. Source
   builds should use `--locked` to select this release's dependency versions.
-- Library users must also update their application's `Cargo.lock`: run
-  `cargo update -p ctutils` and confirm it selects 0.4.4 or newer. LunaCrypt's
-  lockfile does not control dependency versions in consuming applications.
+- Library users should update LunaCrypt and their application's `Cargo.lock`.
+  LunaCrypt's lockfile does not control dependency versions in consuming
+  applications.
 
 ## Downloads
 
